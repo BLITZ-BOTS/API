@@ -7,7 +7,7 @@ import { registerPluginRoutes } from './routes/plugins.js';
 import * as config from './config.js'
 
 const fastify = Fastify({
-  logger: true
+  logger: true,
 });
 
 // Register plugins
@@ -28,7 +28,7 @@ await registerPluginRoutes(fastify, octokit);
 
 // Start server
 try {
-  await fastify.listen({ port: 3000 });
+  await fastify.listen({ port: 3000, host: '0.0.0.0' });
 } catch (err) {
   fastify.log.error(err);
   process.exit(1);
