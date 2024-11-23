@@ -7,7 +7,7 @@ import { registerPluginRoutes } from './routes/plugins.js';
 import * as config from './config.js'
 
 const fastify = Fastify({
-  logger: false
+  logger: true
 });
 
 // Register plugins
