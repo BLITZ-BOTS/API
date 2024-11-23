@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { createClient } from '@supabase/supabase-js';
-import * as config from   '../config'
+import * as config from   '../config.js'
 const supabase = createClient(
   config.SUPABASE_URL,
   config.SUPABASE_KEY
