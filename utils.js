@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import * as config from './config'
+import * as config from './config.js'
 
 export async function readDirRecursive(dir) {
   const files = [];
