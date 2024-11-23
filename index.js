@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
 import formbody from '@fastify/formbody';
+import fastifyCors from '@fastify/cors';
 import { App } from 'octokit';
 import { registerPluginRoutes } from './routes/plugins.js';
 
@@ -10,9 +11,14 @@ const fastify = Fastify({
   logger: true,
 });
 
+
 // Register plugins
 await fastify.register(formbody);
 await fastify.register(multipart);
+await fastify.register(fastifyCors, {
+  origin: true,
+  methods: ['GET', 'POST', 'DELETE']
+})
 
 // Initialize GitHub App
 const app = new App({
