@@ -4,6 +4,7 @@ import formbody from '@fastify/formbody';
 import fastifyCors from '@fastify/cors';
 import { App } from 'octokit';
 import { registerPluginRoutes } from './routes/plugins.js';
+import { registerUserRoutes } from './routes/users.js';
 
 import * as config from './config.js'
 
@@ -31,6 +32,7 @@ const octokit = await app.getInstallationOctokit(config.GITHUB_INSTALLATION_ID);
 
 // Register routes
 await registerPluginRoutes(fastify, octokit);
+await registerUserRoutes(fastify);
 
 // Start server
 try {
