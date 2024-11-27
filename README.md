@@ -1,4 +1,12 @@
-# rewrite
+# blitz-api!
+
+## uses
+
+- Bun (runtime) with TypeScript
+- Honojs (server)
+- Zod (validation)
+- Supabase (auth)
+- Octokit (github)
 
 To install dependencies:
 
@@ -6,10 +14,16 @@ To install dependencies:
 bun install
 ```
 
-To run:
+**_Remember to set .env!_** (follow config.ts)
+
+run:
 
 ```bash
-bun run index.ts
+bun run .
 ```
 
-This project was created using `bun init` in bun v1.1.34. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+run dev server:
+
+```bash
+bun run dev
+```
