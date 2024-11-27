@@ -148,11 +148,11 @@ pluginsRoute.delete("/:name", async (c) => {
     });
     const authorUserId = topicsToAuthor(repo.topics ?? []);
     if (authorUserId !== c.user?.id) {
-      return c.json({ error: "Unauthorized" }, 401);
+      return jsonResponse.error(c, "Unauthorized", "You can't delete this.", 401);
     }
   } catch (e) {
     if (e instanceof RequestError && e.status === 404) {
-      return c.json({ error: "Plugin not found" }, 404);
+      return jsonResponse.error(c, "Plugin not found", "", 404);
     }
     logger.error(`❌ Error checking plugin existence:`, e);
     throw e;
@@ -163,7 +163,7 @@ pluginsRoute.delete("/:name", async (c) => {
       owner: GITHUB_ORG,
       repo: name,
     });
-    return c.json({ message: "Plugin deleted successfully" });
+    return jsonResponse.success(c, { name });
   } catch (e) {
     logger.error(`❌ Error deleting plugin:`, e);
     throw e;
@@ -200,7 +200,6 @@ pluginsRoute.get("/all", async (c) => {
 
   const getPluginData = (repo: (typeof data)[number]) => {
     const topics = repo.topics ?? [];
-    const authorTopic = topics.find((t) => t.startsWith("author-"));
     const author = topicsToAuthor(topics) ?? "unknown";
     const tags = topics.filter((t) => !t.startsWith("author-")).join(",");
 
@@ -214,5 +213,6 @@ pluginsRoute.get("/all", async (c) => {
   };
 
   const refinedData = data.map(getPluginData);
-  return c.json(refinedData);
+
+  return jsonResponse.success(c, refinedData);
 });
