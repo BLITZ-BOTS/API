@@ -9,6 +9,12 @@ import { readFile } from "fs/promises";
 import { jsonResponse } from "@/lib/response";
 import { logger } from "@/lib/logger";
 import { pluginParamsSchema, pluginSchema } from "@/schema/plugin";
+import {
+  getPlugin,
+  getPlugins,
+  reformatPlugin,
+  type BasicRepoInfo,
+} from "@/registry-api";
 
 export const pluginsRoute = new Hono();
 
@@ -141,21 +147,14 @@ pluginsRoute.post("/", async (c) => {
 
 pluginsRoute.delete("/:name", async (c) => {
   const name = c.req.param("name");
-  try {
-    const { data: repo } = await octokit.rest.repos.get({
-      owner: GITHUB_ORG,
-      repo: name,
-    });
-    const authorUserId = topicsToAuthor(repo.topics ?? []);
-    if (authorUserId !== c.user?.id) {
-      return jsonResponse.error(c, "Unauthorized", "You can't delete this.", 401);
-    }
-  } catch (e) {
-    if (e instanceof RequestError && e.status === 404) {
-      return jsonResponse.error(c, "Plugin not found", "", 404);
-    }
-    logger.error(`❌ Error checking plugin existence:`, e);
-    throw e;
+  const repo = await getPlugin(name);
+
+  if (!repo) {
+    return jsonResponse.error(c, "Plugin not found", "", 404);
+  }
+
+  if (repo.author !== c.user?.id) {
+    return jsonResponse.error(c, "Unauthorized", "You can't delete this.", 401);
   }
 
   try {
@@ -163,17 +162,12 @@ pluginsRoute.delete("/:name", async (c) => {
       owner: GITHUB_ORG,
       repo: name,
     });
-    return jsonResponse.success(c, { name });
+    return jsonResponse.success(c, null);
   } catch (e) {
     logger.error(`❌ Error deleting plugin:`, e);
     throw e;
   }
 });
-
-function topicsToAuthor(topics: string[]) {
-  const authorTopic = topics.find((topic) => topic.startsWith("author-"));
-  return authorTopic ? authorTopic.replace("author-", "") : null;
-}
 
 /* 
 crdl -
@@ -192,27 +186,7 @@ const allParamsSchema = z.object({
 pluginsRoute.get("/all", async (c) => {
   const { page, per_page } = allParamsSchema.parse(c.req.query());
 
-  const { data } = await octokit.rest.repos.listForOrg({
-    org: GITHUB_ORG,
-    per_page,
-    page,
-  });
+  const data = await getPlugins(page, per_page);
 
-  const getPluginData = (repo: (typeof data)[number]) => {
-    const topics = repo.topics ?? [];
-    const author = topicsToAuthor(topics) ?? "unknown";
-    const tags = topics.filter((t) => !t.startsWith("author-")).join(",");
-
-    return pluginSchema.parse({
-      name: repo.name,
-      description: repo.description,
-      version: "unknown",
-      author,
-      tags,
-    });
-  };
-
-  const refinedData = data.map(getPluginData);
-
-  return jsonResponse.success(c, refinedData);
+  return jsonResponse.success(c, data);
 });
