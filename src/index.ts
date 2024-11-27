@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { pluginsRoute } from "./routes/plugins";
 import { ZodError } from "zod";
 import { requireAuth } from "./middlewares/auth";
+import { logger } from "./lib/logger";
 
 const app = new Hono();
 const isProd = Bun.env.NODE_ENV === "production";
@@ -27,7 +28,7 @@ app.onError((err, c) => {
     return c.json({ error: err.errors }, 400);
   }
 
-  console.error(err);
+  logger.error(err);
   return c.text("Internal Server Error", 500);
 });
 

@@ -1,4 +1,4 @@
-# blitz-api!
+# blitz-api
 
 ## uses
 

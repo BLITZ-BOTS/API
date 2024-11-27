@@ -6,66 +6,48 @@ import { RequestError } from "octokit";
 import { z } from "zod";
 import { readDirRecursive } from "@/lib/fs-zip";
 import { readFile } from "fs/promises";
-
-const paramsSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  version: z.string(),
-  author: z.string(),
-  tags: z
-    .string()
-    .optional()
-    .describe("comma-separated list of tags")
-    .transform((tags) => tags?.split(",") ?? []),
-  file: z
-    .instanceof(File)
-    .describe("zip file")
-    .refine(
-      (file) =>
-        ["application/zip", "application/x-zip-compressed"].includes(file.type) &&
-        file.name.toLowerCase().endsWith(".zip") &&
-        file.size < 5 * 1024 * 1024 /* 5mb */
-    ),
-});
+import { jsonResponse } from "@/lib/response";
+import { logger } from "@/lib/logger";
+import { pluginParamsSchema, pluginSchema } from "@/schema/plugin";
 
 export const pluginsRoute = new Hono();
 
 pluginsRoute.post("/", async (c) => {
   /* console logs are chatgpted (needed heavy logging fast to know what was happening) */
-  console.log("📥 Starting plugin upload request");
+  logger.info("📥 Starting plugin upload request");
 
   const reqParts = await c.req.parseBody();
-  const data = paramsSchema.parse(reqParts);
+  const data = pluginParamsSchema.parse(reqParts);
   const { name, description, version, author, tags, file: zipFile } = data;
-  let wasRepoCrated = false;
+  let wasRepoCreated = false;
 
-  console.log(`📦 Processing plugin upload: ${name} v${version} by ${author}`);
+  logger.info(`📦 Processing plugin upload: ${name} v${version} by ${author}`);
 
   try {
-    console.log(`🔍 Checking if plugin ${name} already exists...`);
+    logger.info(`🔍 Checking if plugin ${name} already exists...`);
     await octokit.rest.repos.get({ owner: GITHUB_ORG, repo: name });
-    console.log(`⚠️ Plugin ${name} already exists, returning conflict error`);
-    return c.json({ error: "Conflict", message: "Plugin already exists" }, 409);
+    logger.info(`⚠️ Plugin ${name} already exists, returning conflict error`);
+    return jsonResponse.error(c, "Conflict", "Plugin already exists", 409);
   } catch (e) {
     if (e instanceof RequestError && e.status !== 404) {
-      console.error(`❌ Unexpected error checking repo existence:`, e);
+      logger.error(`❌ Unexpected error checking repo existence:`, e);
       throw e;
     }
-    console.log(`✅ Plugin name ${name} is available`);
+    logger.info(`✅ Plugin name ${name} is available`);
   }
 
   try {
-    console.log(`📂 Extracting zip file to temporary directory...`);
+    logger.info(`📂 Extracting zip file to temporary directory...`);
     const tempDir = await zipToFolder(zipFile);
-    console.log(`📁 Temp directory created at: ${tempDir}`);
+    logger.info(`📁 Temp directory created at: ${tempDir}`);
 
     const allFilePaths = await readDirRecursive(tempDir);
-    console.log(`📄 Found ${allFilePaths.length} total files`);
+    logger.info(`📄 Found ${allFilePaths.length} total files`);
 
     const pluginFilePaths = allFilePaths.filter((path) => !path.endsWith(".zip"));
-    console.log(`📑 Processing ${pluginFilePaths.length} plugin files`);
+    logger.info(`📑 Processing ${pluginFilePaths.length} plugin files`);
 
-    console.log(`🏗️ Creating new GitHub repository: ${name}`);
+    logger.info(`🏗️ Creating new GitHub repository: ${name}`);
     const [createdRepo] = await Promise.all([
       octokit.rest.repos.createInOrg({
         org: GITHUB_ORG,
@@ -76,10 +58,10 @@ pluginsRoute.post("/", async (c) => {
         default_branch: "main",
       }),
     ]);
-    wasRepoCrated = true;
-    console.log(`✅ Repository created successfully: ${createdRepo.data.html_url}`);
+    wasRepoCreated = true;
+    logger.info(`✅ Repository created successfully: ${createdRepo.data.html_url}`);
 
-    console.log(`🔄 Creating blobs for ${pluginFilePaths.length} files...`);
+    logger.info(`🔄 Creating blobs for ${pluginFilePaths.length} files...`);
     const treeItems = await Promise.all(
       allFilePaths.map(async (filePath) => {
         const relativePath = filePath.split(tempDir)[1].replace(/^[/\\]/, "");
@@ -94,24 +76,24 @@ pluginsRoute.post("/", async (c) => {
       })
     );
 
-    console.log(`🔍 Getting main branch SHA...`);
+    logger.info(`🔍 Getting main branch SHA...`);
     const mainBranch = await octokit.rest.repos.getBranch({
       owner: GITHUB_ORG,
       repo: name,
       branch: "main",
     });
-    console.log(`✅ Got main branch SHA: ${mainBranch.data.commit.sha}`);
+    logger.info(`✅ Got main branch SHA: ${mainBranch.data.commit.sha}`);
 
-    console.log(`🌳 Creating Git tree...`);
+    logger.info(`🌳 Creating Git tree...`);
     const tree = await octokit.rest.git.createTree({
       owner: GITHUB_ORG,
       repo: name,
       base_tree: mainBranch.data.commit.sha,
       tree: treeItems,
     });
-    console.log(`✅ Tree created with SHA: ${tree.data.sha}`);
+    logger.info(`✅ Tree created with SHA: ${tree.data.sha}`);
 
-    console.log(`📝 Creating initial commit...`);
+    logger.info(`📝 Creating initial commit...`);
     const commit = await octokit.rest.git.createCommit({
       owner: GITHUB_ORG,
       repo: name,
@@ -119,39 +101,79 @@ pluginsRoute.post("/", async (c) => {
       tree: tree.data.sha,
       parents: [mainBranch.data.commit.sha],
     });
-    console.log(`✅ Commit created with SHA: ${commit.data.sha}`);
+    logger.info(`✅ Commit created with SHA: ${commit.data.sha}`);
 
-    console.log(`🔄 Updating main branch and setting topics...`);
+    logger.info(`🔄 Updating main branch and setting topics...`);
     await Promise.all([
-      octokit.rest.git.updateRef({
-        owner: GITHUB_ORG,
-        repo: name,
-        ref: "heads/main",
-        sha: commit.data.sha,
-      }),
-      octokit.rest.repos.replaceAllTopics({
-        owner: GITHUB_ORG,
-        repo: name,
-        names: [...tags, `author-${c.user?.id ?? "dev"}`],
-      }),
+      octokit.rest.git
+        .updateRef({
+          owner: GITHUB_ORG,
+          repo: name,
+          ref: "heads/main",
+          sha: commit.data.sha,
+        })
+        .then(() => logger.info(`✅ Main branch updated successfully`)),
+      octokit.rest.repos
+        .replaceAllTopics({
+          owner: GITHUB_ORG,
+          repo: name,
+          names: [...tags, `author-${c.user?.id ?? "dev"}`],
+        })
+        .then(() => logger.info(`✅ Topics updated successfully`)),
     ]);
-    console.log(`✅ Branch updated and topics set successfully`);
+    logger.info(`✅ Branch updated and topics set successfully`);
 
-    console.log(`🎉 Plugin upload completed successfully!`);
-    return c.json({ name, description, version, author, tags });
+    logger.info(`🎉 Plugin upload completed successfully!`);
+    return jsonResponse.success(c, { name, description, version, author, tags });
   } catch (e) {
-    if (wasRepoCrated) {
-      console.log(`🔄 Deleting repository ${name}...`);
+    if (wasRepoCreated) {
+      logger.info(`🔄 Deleting repository ${name}...`);
       await octokit.rest.repos.delete({
         owner: GITHUB_ORG,
         repo: name,
       });
-      console.log(`✅ Repository deleted successfully`);
+      logger.info(`✅ Repository deleted successfully`);
     }
-    console.error(`❌ Error uploading plugin:`, e);
+    logger.error(`❌ Error uploading plugin:`, e);
     throw e;
   }
 });
+
+pluginsRoute.delete("/:name", async (c) => {
+  const name = c.req.param("name");
+  try {
+    const { data: repo } = await octokit.rest.repos.get({
+      owner: GITHUB_ORG,
+      repo: name,
+    });
+    const authorUserId = topicsToAuthor(repo.topics ?? []);
+    if (authorUserId !== c.user?.id) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+  } catch (e) {
+    if (e instanceof RequestError && e.status === 404) {
+      return c.json({ error: "Plugin not found" }, 404);
+    }
+    logger.error(`❌ Error checking plugin existence:`, e);
+    throw e;
+  }
+
+  try {
+    await octokit.rest.repos.delete({
+      owner: GITHUB_ORG,
+      repo: name,
+    });
+    return c.json({ message: "Plugin deleted successfully" });
+  } catch (e) {
+    logger.error(`❌ Error deleting plugin:`, e);
+    throw e;
+  }
+});
+
+function topicsToAuthor(topics: string[]) {
+  const authorTopic = topics.find((topic) => topic.startsWith("author-"));
+  return authorTopic ? authorTopic.replace("author-", "") : null;
+}
 
 /* 
 crdl -
@@ -161,11 +183,36 @@ delete
 list
 */
 
+const allParamsSchema = z.object({
+  page: z.coerce.number().min(1).optional().default(1),
+  per_page: z.coerce.number().min(1).max(100).optional().default(25),
+});
+
 /* only for testing for now */
 pluginsRoute.get("/all", async (c) => {
+  const { page, per_page } = allParamsSchema.parse(c.req.query());
+
   const { data } = await octokit.rest.repos.listForOrg({
     org: GITHUB_ORG,
-    per_page: 100,
+    per_page,
+    page,
   });
-  return c.json(data);
+
+  const getPluginData = (repo: (typeof data)[number]) => {
+    const topics = repo.topics ?? [];
+    const authorTopic = topics.find((t) => t.startsWith("author-"));
+    const author = topicsToAuthor(topics) ?? "unknown";
+    const tags = topics.filter((t) => !t.startsWith("author-")).join(",");
+
+    return pluginSchema.parse({
+      name: repo.name,
+      description: repo.description,
+      version: "unknown",
+      author,
+      tags,
+    });
+  };
+
+  const refinedData = data.map(getPluginData);
+  return c.json(refinedData);
 });
