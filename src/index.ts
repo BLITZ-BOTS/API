@@ -3,7 +3,8 @@ import { cors } from "hono/cors";
 import { pluginsRoutes } from "@/routes/plugins";
 import { ZodError } from "zod";
 import { requireAuth } from "./middlewares/auth";
-import { logger } from "@/lib/logger";
+import { logger, loggerMiddleware } from "@/lib/logger";
+import { getConnInfo } from "hono/bun";
 
 const app = new Hono();
 const isProd = Bun.env.NODE_ENV === "production";
@@ -17,6 +18,8 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
+
+app.use("*", loggerMiddleware);
 
 /* i couldnt get auth to work with dev so im just hoping it works */
 if (isProd) app.use("*", requireAuth);
