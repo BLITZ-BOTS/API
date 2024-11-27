@@ -1,0 +1,23 @@
+{
+  "name": "blitz-api",
+  "module": "./src/index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "dev": "bun --hot ."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.46.1",
+    "@types/unzipper": "^0.10.10",
+    "hono": "^4.6.12",
+    "nanoid": "^5.0.9",
+    "octokit": "^4.0.2",
+    "unzipper": "^0.12.3",
+    "zod": "^3.23.8"
+  }
+}
