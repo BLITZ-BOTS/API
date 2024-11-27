@@ -10,14 +10,6 @@ const tagsSchema = z
   .describe("comma-separated list of tags")
   .transform((tags) => tags?.split(",").filter(Boolean) ?? []);
 
-export const pluginSchema = z.object({
-  name: nameSchema,
-  description: z.string().max(2048),
-  version: z.string(),
-  author: z.string(),
-  tags: tagsSchema,
-});
-
 const fileSchema = z
   .instanceof(File)
   .describe("zip file")
@@ -27,6 +19,14 @@ const fileSchema = z
       file.name.toLowerCase().endsWith(".zip") &&
       file.size < FILE_SIZE_LIMIT
   );
+
+export const pluginSchema = z.object({
+  name: nameSchema,
+  description: z.string().max(2048),
+  version: z.string(),
+  author: z.string(),
+  tags: tagsSchema,
+});
 
 export const pluginParamsSchema = pluginSchema.extend({
   file: fileSchema,

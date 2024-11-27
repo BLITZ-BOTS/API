@@ -1,7 +1,7 @@
 import type { z } from "zod";
-import { GITHUB_ORG } from "./config";
-import { octokit } from "./lib/octo";
-import { pluginSchema } from "./schema/plugin";
+import { GITHUB_ORG } from "@/config";
+import { octokit } from "@/lib/octo";
+import { pluginSchema } from "@/schema/plugin";
 import { RequestError } from "octokit";
 
 export interface BasicRepoInfo {
@@ -60,4 +60,11 @@ export async function getPlugin(
     }
     throw e;
   }
+}
+
+export async function deletePlugin(name: string) {
+  await octokit.rest.repos.delete({
+    owner: GITHUB_ORG,
+    repo: name,
+  });
 }

@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { pluginsRoute } from "./routes/plugins";
+import { pluginsRoutes } from "@/routes/plugins";
 import { ZodError } from "zod";
 import { requireAuth } from "./middlewares/auth";
-import { logger } from "./lib/logger";
+import { logger } from "@/lib/logger";
 
 const app = new Hono();
 const isProd = Bun.env.NODE_ENV === "production";
@@ -21,7 +21,7 @@ app.use(
 /* i couldnt get auth to work with dev so im just hoping it works */
 if (isProd) app.use("*", requireAuth);
 
-app.route("/plugins", pluginsRoute);
+app.route("/plugins", pluginsRoutes);
 
 app.onError((err, c) => {
   if (err instanceof ZodError) {
