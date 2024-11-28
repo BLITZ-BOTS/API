@@ -3,7 +3,7 @@ import { z } from "zod";
 import { jsonResponse } from "@/lib/response";
 import { logger } from "@/lib/logger";
 import { pluginParamsSchema } from "@/schema/plugin";
-import { deletePlugin, getPlugin, getPlugins } from "@/lib/registry-api";
+import { deletePlugin, getPlugin, getPlugins, searchPlugins } from "@/lib/registry-api";
 import { publishPlugin } from "@/lib/plugin-publish";
 
 export const pluginsRoutes = new Hono();
@@ -13,6 +13,13 @@ const listParamsSchema = z.object({
   per_page: z.coerce.number().min(1).max(100).optional().default(25),
 });
 
+const searchSchema = z.object({
+  query: z.string(),
+  page: z.coerce.number().min(1).optional().default(1),
+  per_page: z.coerce.number().min(1).max(100).optional().default(25),
+});
+
+/* POST / - uploads a plugin, follows pluginParamsSchema */
 pluginsRoutes.post("/", async (c) => {
   logger.info("📥 Starting plugin upload request");
 
@@ -42,8 +49,9 @@ pluginsRoutes.post("/", async (c) => {
   }
 });
 
+/* DELETE /:name - deletes a plugin */
 pluginsRoutes.delete("/:name", async (c) => {
-  const name = c.req.param("name");
+  const name = z.string().parse(c.req.param("name"));
   const repo = await getPlugin(name);
 
   if (!repo) {
@@ -63,10 +71,32 @@ pluginsRoutes.delete("/:name", async (c) => {
   }
 });
 
-pluginsRoutes.get("/all", async (c) => {
+/* GET /?query=music&page=1&per_page=100 - returns 100 plugins page 1 for query "music" */
+pluginsRoutes.get("/search", async (c) => {
+  const { query, page, per_page } = searchSchema.parse(c.req.query());
+
+  const data = await searchPlugins(query, page, per_page);
+
+  return jsonResponse.success(c, data);
+});
+
+/* GET /?page=1&per_page=100 - returns 100 plugins page 1 */
+pluginsRoutes.get("/", async (c) => {
   const { page, per_page } = listParamsSchema.parse(c.req.query());
 
   const data = await getPlugins(page, per_page);
 
   return jsonResponse.success(c, data);
+});
+
+/* GET /get/music-bot - returns info about music-bot */
+pluginsRoutes.get("/get/:name", async (c) => {
+  const name = z.string().parse(c.req.param("name"));
+  const repo = await getPlugin(name);
+
+  if (!repo) {
+    return jsonResponse.error(c, "Plugin not found", "", 404);
+  }
+
+  return jsonResponse.success(c, repo);
 });

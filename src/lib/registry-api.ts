@@ -7,6 +7,8 @@ import { RequestError } from "octokit";
 export interface BasicRepoInfo {
   name: string;
   description: string;
+  html_url: string;
+  default_branch: string;
   topics?: string[];
 }
 
@@ -23,9 +25,10 @@ export function reformatPlugin(repo: BasicRepoInfo): z.infer<typeof pluginSchema
   return pluginSchema.parse({
     name: repo.name,
     description: repo.description,
-    version: "unknown",
+    version: repo.default_branch,
     author,
     tags,
+    url: repo.html_url,
   });
 }
 
@@ -40,6 +43,22 @@ export async function getPlugins(
   });
 
   const refinedData = data.map((e) => reformatPlugin(e as BasicRepoInfo));
+
+  return refinedData;
+}
+
+export async function searchPlugins(
+  query: string,
+  page: number,
+  per_page: number
+): Promise<z.infer<typeof pluginSchema>[]> {
+  const { data } = await octokit.rest.search.repos({
+    q: `org:${GITHUB_ORG} ${query} in:name`,
+    per_page,
+    page,
+  });
+
+  const refinedData = data.items.map((e) => reformatPlugin(e as BasicRepoInfo));
 
   return refinedData;
 }

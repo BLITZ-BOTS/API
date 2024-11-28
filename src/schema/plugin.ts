@@ -3,7 +3,6 @@ import { z } from "zod";
 const FILE_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB
 const VALID_ZIP_TYPES = ["application/zip", "application/x-zip-compressed"];
 
-const nameSchema = z.string().min(3).max(64);
 const tagsSchema = z
   .string()
   .optional()
@@ -21,17 +20,21 @@ const fileSchema = z
   );
 
 export const pluginSchema = z.object({
-  name: nameSchema,
-  description: z.string().max(2048),
+  name: z.string().max(100),
+  description: z.string().max(100),
   version: z.string(),
   author: z.string(),
   tags: tagsSchema,
+  url: z.string().url(),
 });
 
 export const pluginParamsSchema = pluginSchema.extend({
   file: fileSchema,
-  name: nameSchema.refine(
-    (name) => name.toLowerCase().trim() !== "all",
-    '"all" is reserved, and cannot be used.'
-  ),
+  name: z
+    .string()
+    .max(100)
+    .refine(
+      (nam) => !["all", "search"].includes(nam.toLowerCase().trim()),
+      "Name is reserved, and cannot be used."
+    ),
 });
