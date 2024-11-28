@@ -4,7 +4,6 @@ import { pluginsRoutes } from "@/routes/plugins";
 import { ZodError } from "zod";
 import { requireAuth } from "./middlewares/auth";
 import { logger, loggerMiddleware } from "@/lib/logger";
-import { getConnInfo } from "hono/bun";
 import { projectRoutes } from "./routes/projects";
 import { userRoutes } from "./routes/user";
 
