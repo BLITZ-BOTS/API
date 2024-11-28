@@ -5,6 +5,8 @@ import { ZodError } from "zod";
 import { requireAuth } from "./middlewares/auth";
 import { logger, loggerMiddleware } from "@/lib/logger";
 import { getConnInfo } from "hono/bun";
+import { projectRoutes } from "./routes/projects";
+import { userRoutes } from "./routes/user";
 
 const app = new Hono();
 const isProd = Bun.env.NODE_ENV === "production";
@@ -25,6 +27,8 @@ app.use("*", loggerMiddleware);
 if (isProd) app.use("*", requireAuth);
 
 app.route("/plugins", pluginsRoutes);
+app.route("/user", userRoutes);
+app.route("/projects", projectRoutes);
 
 app.onError((err, c) => {
   if (err instanceof ZodError) {
