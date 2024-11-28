@@ -5,18 +5,12 @@ import { logger } from "@/lib/logger";
 import { pluginParamsSchema } from "@/schema/plugin";
 import { deletePlugin, getPlugin, getPlugins, searchPlugins } from "@/lib/registry-api";
 import { publishPlugin } from "@/lib/plugin-publish";
+import { basicPaginationSchema } from "@/schema/pagination";
 
 export const pluginsRoutes = new Hono();
 
-const listParamsSchema = z.object({
-  page: z.coerce.number().min(1).optional().default(1),
-  per_page: z.coerce.number().min(1).max(100).optional().default(25),
-});
-
-const searchSchema = z.object({
+const searchSchema = basicPaginationSchema.extend({
   query: z.string(),
-  page: z.coerce.number().min(1).optional().default(1),
-  per_page: z.coerce.number().min(1).max(100).optional().default(25),
 });
 
 /* POST / - uploads a plugin, follows pluginParamsSchema */
@@ -82,7 +76,7 @@ pluginsRoutes.get("/search", async (c) => {
 
 /* GET /?page=1&per_page=100 - returns 100 plugins page 1 */
 pluginsRoutes.get("/", async (c) => {
-  const { page, per_page } = listParamsSchema.parse(c.req.query());
+  const { page, per_page } = basicPaginationSchema.parse(c.req.query());
 
   const data = await getPlugins(page, per_page);
 
