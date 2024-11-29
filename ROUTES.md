@@ -11,13 +11,13 @@ all routes require Bearer token authentication in the header:
 
 ### Success
 
-```json
+```typescript
 {"data": any}
 ```
 
 ### Error
 
-```json
+```typescript
 {"error": string, "message": string}
 ```
 
@@ -76,9 +76,7 @@ Delete a project by index
 - **Params**: index (number)
 - **Response**: Success or error
 
-## User Routes
-
-Base path: `/user`
+## `/user`
 
 ### POST /user/pella_key
 
