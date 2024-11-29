@@ -89,3 +89,23 @@ projectRoutes.delete("/:index", async (c) => {
 
   return jsonResponse.success(c, null);
 });
+
+projectRoutes.get("/", async (c) => {
+  /* this wont be needed in prod */
+  if (!c.user) {
+    return jsonResponse.error(c, "Unauthorized", "You must be logged in to do this", 401);
+  }
+
+  const supabase = getSupabase(c);
+  const { data: profile, error: fetchError } = await supabase
+    .from("profile")
+    .select("projects")
+    .eq("id", c.user.id)
+    .single();
+
+  if (fetchError) {
+    return jsonResponse.error(c, "Error fetching profile", fetchError.message, 500);
+  }
+
+  return jsonResponse.success(c, profile?.projects || []);
+});

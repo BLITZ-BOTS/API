@@ -73,6 +73,12 @@ Get info about a plugin
 
 ## `/projects`
 
+### GET /projects
+
+Get all projects
+
+- **Response**: Array of project data
+
 ### POST /projects
 
 Create a new project
