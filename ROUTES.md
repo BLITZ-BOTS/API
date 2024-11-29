@@ -23,6 +23,15 @@ all routes require Bearer token authentication in the header:
 
 ## `/plugins`
 
+### GET /plugins
+
+Get all plugins
+
+- **Query Parameters**:
+  - `page`: number (optional, default: 1)
+  - `per_page`: number (optional, default: 25, max: 100)
+- **Response**: Array of plugin data
+
 ### POST /plugins
 
 Upload a new plugin
@@ -54,6 +63,13 @@ Search plugins
   - `page`: number (optional, default: 1)
   - `per_page`: number (optional, default: 25, max: 100)
 - **Response**: Paginated plugin results
+
+### GET /plugins/get/:name
+
+Get info about a plugin
+
+- **Params**: name (string)
+- **Response**: Plugin data or error
 
 ## `/projects`
 
