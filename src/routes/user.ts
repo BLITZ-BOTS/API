@@ -5,6 +5,7 @@ import { z } from "zod";
 
 export const userRoutes = new Hono();
 
+/* POST / - change pella key, needs { pella_api_key: string } */
 userRoutes.post("/pella_key", async (c) => {
   /* this wont be needed in prod */
   if (!c.user) {

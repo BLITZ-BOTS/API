@@ -11,6 +11,7 @@ const createProjectSchema = z.object({
   server_id: z.string(),
 });
 
+/* POST / - create a new project, follows createProjectSchema */
 projectRoutes.post("/", async (c) => {
   /* this wont be needed in prod */
   if (!c.user) {
@@ -42,6 +43,7 @@ projectRoutes.post("/", async (c) => {
   return jsonResponse.success(c, data);
 });
 
+/* DELETE /0 - delete project of index 0 */
 projectRoutes.delete("/:index", async (c) => {
   /* this wont be needed in prod */
   if (!c.user) {
