@@ -11,10 +11,28 @@ export const logger = pino({
   },
 });
 
-export const loggerMiddleware = (c: Context, next: () => Promise<void>) => {
+export const loggerMiddleware = async (c: Context, next: () => Promise<void>) => {
+  const start = performance.now();
   const {
     remote: { address },
   } = getConnInfo(c);
-  logger.info(`${c.req.method} ${address} ${new URL(c.req.url).pathname}`);
-  return next();
+
+  await next();
+
+  const responseTime = performance.now() - start;
+  const method = `\x1b[1m${c.req.method}\x1b[0m`;
+  const ip = `\x1b[36m${address}\x1b[0m`;
+  const path = `\x1b[35m${new URL(c.req.url).pathname}\x1b[0m`;
+  const status = c.res.ok
+    ? `\x1b[32m${c.res.status}\x1b[0m`
+    : `\x1b[31m${c.res.status}\x1b[0m`;
+  const timing = `\x1b[33m${responseTime.toFixed(2)}ms\x1b[0m`;
+
+  const str = `${method} ${ip} ${path} ${status} ${timing}`;
+
+  if (c.res.ok) {
+    logger.info(str);
+  } else {
+    logger.warn(str);
+  }
 };
