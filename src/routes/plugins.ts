@@ -6,8 +6,9 @@ import { pluginParamsSchema } from "@/schema/plugin";
 import { deletePlugin, getPlugin, getPlugins, searchPlugins } from "@/lib/registry-api";
 import { publishPlugin } from "@/lib/plugin-publish";
 import { basicPaginationSchema } from "@/schema/pagination";
+import type { HonoParams } from "@/types/vars";
 
-export const pluginsRoutes = new Hono();
+export const pluginsRoutes = new Hono<HonoParams>();
 
 const searchSchema = basicPaginationSchema.extend({
   query: z.string(),
@@ -19,11 +20,12 @@ pluginsRoutes.post("/", async (c) => {
 
   const reqParts = await c.req.parseBody();
   const data = pluginParamsSchema.parse(reqParts);
+  const user = c.get("user");
 
   try {
     const result = await publishPlugin({
       ...data,
-      userId: c.user?.id,
+      userId: user?.id,
     });
 
     if (!result.success) {
@@ -52,7 +54,7 @@ pluginsRoutes.delete("/:name", async (c) => {
     return jsonResponse.error(c, "Plugin not found", "", 404);
   }
 
-  if (repo.author !== c.user?.id) {
+  if (repo.author !== c.get("user").id) {
     return jsonResponse.error(c, "Unauthorized", "You can't delete this.", 401);
   }
 

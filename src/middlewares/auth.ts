@@ -24,6 +24,7 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   try {
     await verify(token, SUPABASE_JWT_SECRET);
     const { data, error } = await supabase.auth.getUser(token);
+    console.log(data);
 
     if (error || !data.user) {
       return jsonResponse.error(

@@ -1,9 +1,10 @@
 import { jsonResponse } from "@/lib/response";
 import { getSupabase } from "@/lib/supabase";
+import type { HonoParams } from "@/types/vars";
 import { Hono } from "hono";
 import { z } from "zod";
 
-export const projectRoutes = new Hono();
+export const projectRoutes = new Hono<HonoParams>();
 
 const createProjectSchema = z.object({
   name: z.string(),
@@ -13,10 +14,7 @@ const createProjectSchema = z.object({
 
 /* POST / - create a new project, follows createProjectSchema */
 projectRoutes.post("/", async (c) => {
-  /* this wont be needed in prod */
-  if (!c.user) {
-    return jsonResponse.error(c, "Unauthorized", "You must be logged in to do this", 401);
-  }
+  const user = c.get("user");
 
   const newProject = createProjectSchema.parse(await c.req.json());
   const supabase = getSupabase(c);
@@ -25,7 +23,7 @@ projectRoutes.post("/", async (c) => {
     .from("profile")
     .upsert(
       {
-        id: c.user.id,
+        id: user.id,
         projects: [newProject],
       },
       {
@@ -45,10 +43,7 @@ projectRoutes.post("/", async (c) => {
 
 /* DELETE /0 - delete project of index 0 */
 projectRoutes.delete("/:index", async (c) => {
-  /* this wont be needed in prod */
-  if (!c.user) {
-    return jsonResponse.error(c, "Unauthorized", "You must be logged in to do this", 401);
-  }
+  const user = c.get("user");
 
   const index = z.coerce.number().parse(c.req.param("index"));
   const supabase = getSupabase(c);
@@ -56,7 +51,7 @@ projectRoutes.delete("/:index", async (c) => {
   const { data: profile, error: fetchError } = await supabase
     .from("profile")
     .select("projects")
-    .eq("id", c.user.id)
+    .eq("id", user.id)
     .single();
 
   if (fetchError) {
@@ -81,7 +76,7 @@ projectRoutes.delete("/:index", async (c) => {
     .update({
       projects: filteredProjects,
     })
-    .eq("id", c.user.id);
+    .eq("id", user.id);
 
   if (error) {
     return jsonResponse.error(c, "Error updating projects", error.message, 500);
@@ -91,16 +86,13 @@ projectRoutes.delete("/:index", async (c) => {
 });
 
 projectRoutes.get("/", async (c) => {
-  /* this wont be needed in prod */
-  if (!c.user) {
-    return jsonResponse.error(c, "Unauthorized", "You must be logged in to do this", 401);
-  }
+  const user = c.get("user");
 
   const supabase = getSupabase(c);
   const { data: profile, error: fetchError } = await supabase
     .from("profile")
     .select("projects")
-    .eq("id", c.user.id)
+    .eq("id", user.id)
     .single();
 
   if (fetchError) {
