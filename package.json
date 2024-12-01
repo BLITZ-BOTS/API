@@ -9,7 +9,8 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
-    "dev": "bun --hot ."
+    "dev": "bun run --hot .",
+    "start": "bun run ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.46.1",
