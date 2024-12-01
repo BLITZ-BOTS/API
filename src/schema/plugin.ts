@@ -20,8 +20,8 @@ const fileSchema = z
   );
 
 export const pluginSchema = z.object({
-  name: z.string().max(100),
-  description: z.string().max(100),
+  name: z.string(),
+  description: z.string(),
   version: z.string(),
   author: z.string(),
   tags: tagsSchema,
