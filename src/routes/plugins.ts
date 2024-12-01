@@ -7,6 +7,7 @@ import { deletePlugin, getPlugin, getPlugins, searchPlugins } from "@/lib/regist
 import { publishPlugin } from "@/lib/plugin-publish";
 import { basicPaginationSchema } from "@/schema/pagination";
 import type { HonoParams } from "@/types/vars";
+import { requireAuth } from "@/middlewares/auth";
 
 export const pluginsRoutes = new Hono<HonoParams>();
 
@@ -15,7 +16,7 @@ const searchSchema = basicPaginationSchema.extend({
 });
 
 /* POST / - uploads a plugin, follows pluginParamsSchema */
-pluginsRoutes.post("/", async (c) => {
+pluginsRoutes.post("/", requireAuth, async (c) => {
   logger.info("📥 Starting plugin upload request");
 
   const reqParts = await c.req.parseBody();
@@ -43,7 +44,7 @@ pluginsRoutes.post("/", async (c) => {
 });
 
 /* DELETE /:name - deletes a plugin */
-pluginsRoutes.delete("/:name", async (c) => {
+pluginsRoutes.delete("/:name", requireAuth, async (c) => {
   const name = z.string().parse(c.req.param("name"));
   const repo = await getPlugin(name);
 

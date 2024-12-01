@@ -21,8 +21,6 @@ app.use(
 
 app.use("*", loggerMiddleware);
 
-app.use("*", requireAuth);
-
 app.route("/plugins", pluginsRoutes);
 app.route("/user", userRoutes);
 app.route("/projects", projectRoutes);
