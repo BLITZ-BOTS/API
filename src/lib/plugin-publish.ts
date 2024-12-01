@@ -9,7 +9,7 @@ import { pluginParamsSchema } from "@/schema/plugin";
 type PublishPluginParams = z.infer<typeof pluginParamsSchema>;
 
 export async function publishPlugin(params: PublishPluginParams, userId: string) {
-  const { name, description, version, tags, file: zipFile } = params;
+  const { name, description, version, tags, file: zipFile, url } = params;
   let wasRepoCreated = false;
 
   if ((await getPlugin(name)) !== null) {
@@ -29,7 +29,8 @@ export async function publishPlugin(params: PublishPluginParams, userId: string)
       org: GITHUB_ORG,
       name,
       description,
-      private: true,
+      homepage: url,
+      private: false,
       auto_init: true,
       default_branch: "main",
     });
