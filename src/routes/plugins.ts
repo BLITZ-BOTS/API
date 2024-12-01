@@ -23,10 +23,7 @@ pluginsRoutes.post("/", async (c) => {
   const user = c.get("user");
 
   try {
-    const result = await publishPlugin({
-      ...data,
-      userId: user?.id,
-    });
+    const result = await publishPlugin(data, user.id);
 
     if (!result.success) {
       return jsonResponse.error(

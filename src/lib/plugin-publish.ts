@@ -3,19 +3,13 @@ import { zipToFolder, readDirRecursive } from "@/lib/fs-zip";
 import { octokit } from "@/lib/octo";
 import { readFile } from "fs/promises";
 import { getPlugin } from "@/lib/registry-api";
+import type { z } from "zod";
+import { pluginParamsSchema } from "@/schema/plugin";
 
-interface PublishPluginParams {
-  name: string;
-  description: string;
-  version: string;
-  author: string;
-  tags: string[];
-  file: File;
-  userId?: string;
-}
+type PublishPluginParams = z.infer<typeof pluginParamsSchema>;
 
-export async function publishPlugin(params: PublishPluginParams) {
-  const { name, description, version, author, tags, file: zipFile, userId } = params;
+export async function publishPlugin(params: PublishPluginParams, userId: string) {
+  const { name, description, version, tags, file: zipFile } = params;
   let wasRepoCreated = false;
 
   if ((await getPlugin(name)) !== null) {
@@ -85,13 +79,13 @@ export async function publishPlugin(params: PublishPluginParams) {
       octokit.rest.repos.replaceAllTopics({
         owner: GITHUB_ORG,
         repo: name,
-        names: [...tags, `author-${userId ?? "dev"}`],
+        names: [...tags, `author-${userId}`],
       }),
     ]);
 
     return {
       success: true,
-      data: { name, description, version, author, tags },
+      data: { name, description, version, userId, tags },
     };
   } catch (e) {
     if (wasRepoCreated) {

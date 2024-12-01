@@ -21,14 +21,14 @@ const fileSchema = z
 
 export const pluginSchema = z.object({
   name: z.string(),
-  description: z.string(),
+  description: z.string().optional(),
   version: z.string(),
   author: z.string(),
   tags: tagsSchema,
-  url: z.string().url(),
+  url: z.string().url().optional(),
 });
 
-export const pluginParamsSchema = pluginSchema.extend({
+export const pluginParamsSchema = pluginSchema.omit({ author: true }).extend({
   file: fileSchema,
   name: z
     .string()
