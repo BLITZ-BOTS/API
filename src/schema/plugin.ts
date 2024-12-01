@@ -20,7 +20,11 @@ const fileSchema = z
   );
 
 export const pluginSchema = z.object({
-  name: z.string(),
+  name: z
+    .string()
+    .transform(
+      (nam) => nam.toUpperCase().trim()
+    ),
   description: z.string().optional(),
   version: z.string(),
   author: z.string(),
@@ -32,9 +36,7 @@ export const pluginParamsSchema = pluginSchema.omit({ author: true }).extend({
   file: fileSchema,
   name: z
     .string()
-    .max(100)
-    .refine(
-      (nam) => !["all", "search"].includes(nam.toLowerCase().trim()),
-      "Name is reserved, and cannot be used."
+    .transform(
+      (nam) => nam.toUpperCase().trim()
     ),
 });
