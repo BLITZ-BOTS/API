@@ -5,8 +5,6 @@
 all routes require Bearer token authentication in the header:
 `Authorization: Bearer <token>`
 
-(this does not apply to `bun dev`)
-
 ## Response
 
 ### Success

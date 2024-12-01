@@ -8,7 +8,6 @@ import { projectRoutes } from "./routes/projects";
 import { userRoutes } from "./routes/user";
 
 const app = new Hono();
-const isProd = Bun.env.NODE_ENV === "production";
 const { PORT } = Bun.env;
 
 /* we need to finish setting up cors */
@@ -22,8 +21,7 @@ app.use(
 
 app.use("*", loggerMiddleware);
 
-/* i couldnt get auth to work with dev so im just hoping it works */
-if (isProd) app.use("*", requireAuth);
+app.use("*", requireAuth);
 
 app.route("/plugins", pluginsRoutes);
 app.route("/user", userRoutes);

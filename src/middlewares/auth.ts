@@ -1,14 +1,13 @@
 import type { MiddlewareHandler } from "hono";
 import { supabase } from "@/lib/supabase";
 import { jsonResponse } from "@/lib/response";
-import { jwt } from "hono/jwt";
+import { verify } from "hono/jwt";
 import { SUPABASE_JWT_SECRET } from "@/config";
-import { every } from "hono/combine";
 
 /**
  * auth users using supabase
  */
-const requireAuthRaw: MiddlewareHandler = async (c, next) => {
+export const requireAuth: MiddlewareHandler = async (c, next) => {
   const authHeader = c.req.header("authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -23,6 +22,7 @@ const requireAuthRaw: MiddlewareHandler = async (c, next) => {
   const token = authHeader.replace("Bearer ", "");
 
   try {
+    await verify(token, SUPABASE_JWT_SECRET);
     const { data, error } = await supabase.auth.getUser(token);
 
     if (error || !data.user) {
@@ -40,13 +40,11 @@ const requireAuthRaw: MiddlewareHandler = async (c, next) => {
     /* success! */
     await next();
   } catch (err) {
-    return jsonResponse.error(c, "Unauthorized", "Invalid or expired token", 401);
+    return jsonResponse.error(
+      c,
+      "Unauthorized",
+      "Invalid or expired token (jwt verified)",
+      401
+    );
   }
 };
-
-export const requireAuth = every(
-  jwt({
-    secret: SUPABASE_JWT_SECRET,
-  }),
-  requireAuthRaw
-);
