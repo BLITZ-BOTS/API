@@ -34,17 +34,25 @@ export function reformatPlugin(repo: BasicRepoInfo): z.infer<typeof pluginSchema
 
 export async function getPlugins(
   page: number,
-  per_page: number
+  per_page: number,
+  authorId?: string
 ): Promise<z.infer<typeof pluginSchema>[]> {
+  if (authorId) {
+    const { data } = await octokit.rest.search.repos({
+      q: `org:${GITHUB_ORG} topic:author-${authorId}`,
+      per_page,
+      page,
+    });
+    return data.items.map((e) => reformatPlugin(e as BasicRepoInfo));
+  }
+
   const { data } = await octokit.rest.repos.listForOrg({
     org: GITHUB_ORG,
     per_page,
     page,
   });
 
-  const refinedData = data.map((e) => reformatPlugin(e as BasicRepoInfo));
-
-  return refinedData;
+  return data.map((e) => reformatPlugin(e as BasicRepoInfo));
 }
 
 export async function searchPlugins(
