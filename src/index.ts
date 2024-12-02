@@ -2,10 +2,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { pluginsRoutes } from "@/routes/plugins";
 import { ZodError } from "zod";
-import { requireAuth } from "./middlewares/auth";
 import { logger, loggerMiddleware } from "@/lib/logger";
 import { projectRoutes } from "./routes/projects";
 import { userRoutes } from "./routes/user";
+import { jsonResponse } from "./lib/response";
 
 const app = new Hono();
 const { PORT } = Bun.env;
@@ -27,11 +27,15 @@ app.route("/projects", projectRoutes);
 
 app.onError((err, c) => {
   if (err instanceof ZodError) {
-    return c.json({ error: err.errors }, 400);
+    const zodErrorsString = err.issues
+      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+      .join("\n");
+
+    return jsonResponse.error(c, "Invalid body", zodErrorsString, 400);
   }
 
   logger.error(err);
-  return c.text("Internal Server Error", 500);
+  return jsonResponse.error(c, err.name, err.message, 500);
 });
 
 Bun.serve({
