@@ -20,11 +20,7 @@ const fileSchema = z
   );
 
 export const pluginSchema = z.object({
-  name: z
-    .string()
-    .transform(
-      (nam) => nam.toUpperCase().trim()
-    ),
+  name: z.string().transform((nam) => nam.toUpperCase().trim()),
   description: z.string().optional(),
   version: z.string(),
   author: z.string(),
@@ -34,9 +30,5 @@ export const pluginSchema = z.object({
 
 export const pluginParamsSchema = pluginSchema.omit({ author: true }).extend({
   file: fileSchema,
-  name: z
-    .string()
-    .transform(
-      (nam) => nam.toUpperCase().trim()
-    ),
+  name: z.string().transform((nam) => nam.toUpperCase().trim()),
 });
