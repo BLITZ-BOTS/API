@@ -9,7 +9,7 @@ export async function zipToFolder(zipFile: File) {
   const tempDir = join(tmpdir(), `plugin-${nanoid()}`);
   await mkdir(tempDir, { recursive: true });
 
-  const zipPath = join(tempDir, "plugin.zip");
+  const zipPath = join(tempDir, "blitz-dev-plugin.zip");
   const fileBuffer = await zipFile.arrayBuffer();
   await writeFile(zipPath, new Uint8Array(fileBuffer));
 

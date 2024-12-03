@@ -1,5 +1,6 @@
 import { jsonResponse } from "@/lib/response";
 import { getSupabase } from "@/lib/supabase";
+import { parseJsonSchema, parseParamsSchema } from "@/lib/validation";
 import { requireAuth } from "@/middlewares/auth";
 import type { HonoParams } from "@/types/vars";
 import { Hono } from "hono";
@@ -15,10 +16,9 @@ const createProjectSchema = z.object({
 
 /* POST / - create a new project, follows createProjectSchema */
 projectRoutes.post("/", requireAuth, async (c) => {
-  const user = c.get("user");
-
-  const newProject = createProjectSchema.parse(await c.req.json());
+  const newProject = await parseJsonSchema(c, createProjectSchema);
   const supabase = getSupabase(c);
+  const user = c.get("user");
 
   const { data, error } = await supabase
     .from("profile")
@@ -46,7 +46,7 @@ projectRoutes.post("/", requireAuth, async (c) => {
 projectRoutes.delete("/:index", requireAuth, async (c) => {
   const user = c.get("user");
 
-  const index = z.coerce.number().parse(c.req.param("index"));
+  const index = parseParamsSchema(c, z.coerce.number());
   const supabase = getSupabase(c);
 
   const { data: profile, error: fetchError } = await supabase

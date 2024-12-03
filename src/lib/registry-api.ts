@@ -3,6 +3,7 @@ import { GITHUB_ORG } from "@/config";
 import { octokit } from "@/lib/octo";
 import { pluginSchema } from "@/schema/plugin";
 import { RequestError } from "octokit";
+import { logger } from "./logger";
 
 export interface BasicRepoInfo {
   name: string;
@@ -17,18 +18,36 @@ function topicsToAuthor(topics: string[]) {
   return authorTopic ? authorTopic.replace("author-", "") : null;
 }
 
-export function reformatPlugin(repo: BasicRepoInfo): z.infer<typeof pluginSchema> {
+export function sortVersions(defaultv: string, versions?: string[]) {
+  return versions ? [defaultv, ...versions.filter((v) => v !== defaultv)] : [defaultv];
+}
+
+export function reformatPlugin(
+  repo: BasicRepoInfo,
+  {
+    versions,
+    currentVersion,
+  }: {
+    versions?: string[];
+    currentVersion?: string;
+  } = {}
+): z.infer<typeof pluginSchema> {
   const topics = repo.topics ?? [];
   const author = topicsToAuthor(topics) ?? "unknown";
-  const tags = topics.filter((t) => !t.startsWith("author-")).join(",");
+  const tags = topics.filter((t) => !t.startsWith("author-"));
+
+  // Sort versions to put default branch first
+  const sortedVersions = sortVersions(repo.default_branch, versions);
 
   return pluginSchema.parse({
     name: repo.name,
     description: repo.description,
-    version: repo.default_branch,
+    versions: sortedVersions,
     author,
     tags,
-    url: repo.html_url,
+    repoUrl: `https://github.com/${GITHUB_ORG}/${repo.name}/tree/${
+      currentVersion || repo.default_branch
+    }`,
   });
 }
 
@@ -72,7 +91,14 @@ export async function searchPlugins(
 }
 
 export async function getPlugin(
-  name: string
+  name: string,
+  {
+    version,
+    showAllVersions,
+  }: {
+    version?: string;
+    showAllVersions?: boolean;
+  } = {}
 ): Promise<z.infer<typeof pluginSchema> | null> {
   try {
     const { data } = await octokit.rest.repos.get({
@@ -80,7 +106,39 @@ export async function getPlugin(
       repo: name,
     });
 
-    return reformatPlugin(data as BasicRepoInfo);
+    const allVersionNames = showAllVersions
+      ? await (async () => {
+          const { data } = await octokit.rest.repos.listBranches({
+            owner: GITHUB_ORG,
+            repo: name,
+          });
+          return data.map((e) => e.name);
+        })()
+      : undefined;
+
+    if (version) {
+      try {
+        await octokit.rest.repos.getBranch({
+          owner: GITHUB_ORG,
+          repo: name,
+          branch: version,
+        });
+
+        return reformatPlugin(data as BasicRepoInfo, {
+          currentVersion: version,
+          versions: allVersionNames,
+        });
+      } catch (e) {
+        if (e instanceof RequestError && e.status === 404) {
+          return null;
+        }
+        throw e;
+      }
+    }
+
+    return reformatPlugin(data as BasicRepoInfo, {
+      versions: allVersionNames,
+    });
   } catch (e) {
     if (e instanceof RequestError && e.status === 404) {
       return null;

@@ -2,7 +2,7 @@
 
 ## Authentication
 
-all routes require Bearer token authentication in the header:
+All routes require Bearer token authentication in the header:
 `Authorization: Bearer <token>`
 
 ## Response
@@ -28,19 +28,27 @@ Get all plugins
 - **Query Parameters**:
   - `page`: number (optional, default: 1)
   - `per_page`: number (optional, default: 25, max: 100)
-- **Response**: Array of plugin data
+- **Response**: Paginated array of plugin data
 
 ### POST /plugins
 
 Upload a new plugin
 
 - **Body**: Multipart form data
-  - `name`: string (max 100 chars, cannot be "all" or "search")
-  - `description`: string (max 100 chars)
+  - `name`: string
+  - `description`: string
   - `version`: string
-  - `author`: string
-  - `tags`: string (comma-separated)
-  - `url`: string (valid URL)
+  - `tags`: string[]
+  - `homepage`: string (valid URL)
+  - `file`: ZIP file (max 5MB)
+- **Response**: Plugin data or error
+
+### PATCH /plugins/:name
+
+Updates a plugin
+
+- **Body**: Multipart form data (these are required, you can also update other fields)
+  - `version`: string
   - `file`: ZIP file (max 5MB)
 - **Response**: Plugin data or error
 
@@ -100,10 +108,11 @@ Delete a project by index
 
 ### POST /user/pella_key
 
-Update user`s Pella API key
+Update user's Pella API key
 
 - **Body**:
   {
   "pella_api_key": "string"
   }
+- **Validation**: Pella API key will be validated
 - **Response**: Success or error

@@ -2,12 +2,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { jsonResponse } from "@/lib/response";
 import { logger } from "@/lib/logger";
-import { pluginParamsSchema } from "@/schema/plugin";
+import { pluginCreateParamsSchema, propertySchemas } from "@/schema/plugin";
 import { deletePlugin, getPlugin, getPlugins, searchPlugins } from "@/lib/registry-api";
-import { publishPlugin } from "@/lib/plugin-publish";
+import { publishPlugin, updatePlugin } from "@/lib/plugin-publish";
 import { basicPaginationSchema } from "@/schema/pagination";
 import type { HonoParams } from "@/types/vars";
 import { requireAuth } from "@/middlewares/auth";
+import { parseBodySchema, parseParamsSchema, parseQuerySchema } from "@/lib/validation";
 
 export const pluginsRoutes = new Hono<HonoParams>();
 
@@ -19,33 +20,49 @@ const searchSchema = basicPaginationSchema.extend({
 pluginsRoutes.post("/", requireAuth, async (c) => {
   logger.info("📥 Starting plugin upload request");
 
-  const reqParts = await c.req.parseBody();
-  const data = pluginParamsSchema.parse(reqParts);
+  const data = await parseBodySchema(c, pluginCreateParamsSchema);
   const user = c.get("user");
 
   try {
-    const result = await publishPlugin(data, user.id);
-
-    if (!result.success) {
+    if ((await getPlugin(data.name)) !== null) {
       return jsonResponse.error(
         c,
-        result.error ?? "Unknown error",
-        result.message ?? "There was an unknown error while creating.",
-        result.status
+        "Plugin already exists",
+        "If you want to update an already existing plugin, use PATCH method.",
+        409
       );
     }
 
+    const result = await publishPlugin(data, user.id);
+
     logger.info(`✅ Plugin uploaded successfully: ${data.name}`);
-    return jsonResponse.success(c, result.data);
+    return jsonResponse.success(c, result);
   } catch (e) {
     logger.error(`❌ Error uploading plugin:`, e);
     throw e;
   }
 });
 
+pluginsRoutes.patch("/:name", requireAuth, async (c) => {
+  const data = await parseBodySchema(c, pluginCreateParamsSchema);
+  const repo = await getPlugin(data.name);
+
+  if (!repo) {
+    return jsonResponse.error(c, "Plugin not found", "", 404);
+  }
+
+  if (repo.author !== c.get("user").id) {
+    return jsonResponse.error(c, "Unauthorized", "You can't update this.", 401);
+  }
+
+  const newRepo = await updatePlugin(data, c.get("user").id, repo);
+
+  return jsonResponse.success(c, newRepo);
+});
+
 /* DELETE /:name - deletes a plugin */
 pluginsRoutes.delete("/:name", requireAuth, async (c) => {
-  const name = z.string().parse(c.req.param("name"));
+  const name = parseParamsSchema(c, propertySchemas.name, "name");
   const repo = await getPlugin(name);
 
   if (!repo) {
@@ -67,7 +84,7 @@ pluginsRoutes.delete("/:name", requireAuth, async (c) => {
 
 /* GET /?query=music&page=1&per_page=100 - returns 100 plugins page 1 for query "music" */
 pluginsRoutes.get("/search", async (c) => {
-  const { query, page, per_page } = searchSchema.parse(c.req.query());
+  const { query, page, per_page } = parseQuerySchema(c, searchSchema);
 
   const data = await searchPlugins(query, page, per_page);
 
@@ -76,7 +93,7 @@ pluginsRoutes.get("/search", async (c) => {
 
 /* GET /?page=1&per_page=100 - returns 100 plugins page 1 */
 pluginsRoutes.get("/", async (c) => {
-  const { page, per_page } = basicPaginationSchema.parse(c.req.query());
+  const { page, per_page } = parseQuerySchema(c, basicPaginationSchema);
 
   const data = await getPlugins(page, per_page);
 
@@ -84,9 +101,14 @@ pluginsRoutes.get("/", async (c) => {
 });
 
 /* GET /get/music-bot - returns info about music-bot */
-pluginsRoutes.get("/get/:name", async (c) => {
-  const name = z.string().parse(c.req.param("name"));
-  const repo = await getPlugin(name);
+pluginsRoutes.get("/get/:name/:version", async (c) => {
+  const name = parseParamsSchema(c, propertySchemas.name);
+  const version = parseParamsSchema(c, propertySchemas.version);
+
+  const repo = await getPlugin(name, {
+    version,
+    showAllVersions: true,
+  });
 
   if (!repo) {
     return jsonResponse.error(c, "Plugin not found", "", 404);
@@ -96,7 +118,8 @@ pluginsRoutes.get("/get/:name", async (c) => {
 });
 
 pluginsRoutes.get("/user/:id", async (c) => {
-  const id = z.string().parse(c.req.param("id"));
+  const id = parseParamsSchema(c, z.string(), "id");
+
   const repos = await getPlugins(1, 100, id);
 
   return jsonResponse.success(c, repos);

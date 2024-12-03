@@ -1,34 +1,47 @@
 import { z } from "zod";
 
-const FILE_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB
-const VALID_ZIP_TYPES = ["application/zip", "application/x-zip-compressed"];
-
-const tagsSchema = z
+const versionSchema = z.string().min(1).max(10);
+const nameSchema = z
   .string()
-  .optional()
-  .describe("comma-separated list of tags")
-  .transform((tags) => tags?.split(",").filter(Boolean) ?? []);
-
+  .min(1)
+  .max(100)
+  .regex(/^[a-zA-Z0-9-_.]+$/)
+  .transform((nam) => nam.toUpperCase().trim());
 const fileSchema = z
   .instanceof(File)
-  .describe("zip file")
   .refine(
-    (file) =>
-      VALID_ZIP_TYPES.includes(file.type) &&
-      file.name.toLowerCase().endsWith(".zip") &&
-      file.size < FILE_SIZE_LIMIT
+    (f) =>
+      f.type === "application/zip" &&
+      f.size < 1024 * 1024 * 5 /* max 5mb */ &&
+      f.name.toLowerCase().trim().endsWith(".zip")
   );
 
 export const pluginSchema = z.object({
-  name: z.string().transform((nam) => nam.toUpperCase().trim()),
-  description: z.string().optional(),
-  version: z.string(),
-  author: z.string(),
-  tags: tagsSchema,
-  url: z.string().url().optional(),
+  name: nameSchema,
+  description: z.string().max(100).nullish().default(null),
+  versions: z.array(versionSchema).min(1),
+  author: z.string().min(1),
+  tags: z.array(z.string()).default([]),
+  homepage: z.string().url().nullish().default(null),
+  repoUrl: z.string().url(),
 });
 
-export const pluginParamsSchema = pluginSchema.omit({ author: true }).extend({
+export const pluginCreateParamsSchema = pluginSchema
+  .omit({ author: true, repoUrl: true, versions: true })
+  .extend({
+    file: fileSchema,
+    version: versionSchema,
+  });
+
+export const pluginUpdateParamsSchema = pluginSchema
+  .omit({ author: true, repoUrl: true, versions: true })
+  .extend({
+    file: fileSchema,
+    version: versionSchema,
+  });
+
+export const propertySchemas = {
+  name: nameSchema,
   file: fileSchema,
-  name: z.string().transform((nam) => nam.toUpperCase().trim()),
-});
+  version: versionSchema,
+};

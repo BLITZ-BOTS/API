@@ -1,5 +1,6 @@
 import { jsonResponse } from "@/lib/response";
 import { getSupabase } from "@/lib/supabase";
+import { parseJsonSchema } from "@/lib/validation";
 import { requireAuth } from "@/middlewares/auth";
 import type { HonoParams } from "@/types/vars";
 import { Hono } from "hono";
@@ -9,8 +10,10 @@ export const userRoutes = new Hono<HonoParams>();
 
 /* POST / - change pella key, needs { pella_api_key: string } */
 userRoutes.post("/pella_key", requireAuth, async (c) => {
-  const body = (await c.req.json()) as { pella_api_key?: string };
-  const pella_api_key = z.string().parse(body.pella_api_key);
+  const { pella_api_key } = await parseJsonSchema(
+    c,
+    z.object({ pella_api_key: z.string() })
+  );
 
   const supabase = getSupabase(c);
 
