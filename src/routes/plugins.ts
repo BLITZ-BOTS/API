@@ -117,6 +117,21 @@ pluginsRoutes.get("/get/:name/:version", async (c) => {
   return jsonResponse.success(c, repo);
 });
 
+/* GET /get/music-bot - returns info about music-bot */
+pluginsRoutes.get("/get/:name", async (c) => {
+  const name = parseParamsSchema(c, propertySchemas.name);
+
+  const repo = await getPlugin(name, {
+    showAllVersions: true,
+  });
+
+  if (!repo) {
+    return jsonResponse.error(c, "Plugin not found", "", 404);
+  }
+
+  return jsonResponse.success(c, repo);
+});
+
 pluginsRoutes.get("/user/:id", async (c) => {
   const id = parseParamsSchema(c, z.string(), "id");
 
