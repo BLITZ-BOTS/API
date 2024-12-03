@@ -102,8 +102,8 @@ pluginsRoutes.get("/", async (c) => {
 
 /* GET /get/music-bot - returns info about music-bot */
 pluginsRoutes.get("/get/:name/:version", async (c) => {
-  const name = parseParamsSchema(c, propertySchemas.name);
-  const version = parseParamsSchema(c, propertySchemas.version);
+  const name = parseParamsSchema(c, propertySchemas.name, "name");
+  const version = parseParamsSchema(c, propertySchemas.version, "version");
 
   const repo = await getPlugin(name, {
     version,
@@ -119,7 +119,7 @@ pluginsRoutes.get("/get/:name/:version", async (c) => {
 
 /* GET /get/music-bot - returns info about music-bot */
 pluginsRoutes.get("/get/:name", async (c) => {
-  const name = parseParamsSchema(c, propertySchemas.name);
+  const name = parseParamsSchema(c, propertySchemas.name, "name");
 
   const repo = await getPlugin(name, {
     showAllVersions: true,
