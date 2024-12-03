@@ -10,6 +10,8 @@ interface Env {
   GITHUB_ORG: string;
 }
 
+const env = Bun.env as unknown as Env;
+
 const {
   SUPABASE_JWT_SECRET,
   SUPABASE_KEY,
@@ -18,19 +20,11 @@ const {
   GITHUB_APP_PRIVATE_KEY,
   GITHUB_APP_ID,
   GITHUB_ORG,
-} = Bun.env as unknown as Env;
+} = env;
 
 /* support both named and default exports */
 
-export default {
-  SUPABASE_JWT_SECRET,
-  SUPABASE_KEY,
-  SUPABASE_URL,
-  GITHUB_INSTALLATION_ID,
-  GITHUB_APP_PRIVATE_KEY,
-  GITHUB_APP_ID,
-  GITHUB_ORG,
-};
+export default env;
 
 export {
   SUPABASE_JWT_SECRET,
