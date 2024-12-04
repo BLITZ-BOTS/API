@@ -66,12 +66,15 @@ export async function publishPlugin(
   let wasRepoCreated = false;
   const branchName = version ?? "main";
 
+  logger.info("Starting plugin publication process", { name, version, userId });
+
   try {
-    // Step 1: Extract zip contents to temporary directory
+    logger.info("Extracting zip contents", { name });
     const tempDir = await zipToFolder(zipFile);
     const allFilePaths = await readDirRecursive(tempDir);
+    logger.info("Zip extraction complete", { name, fileCount: allFilePaths.length });
 
-    // Step 2: Create a new GitHub repository
+    logger.info("Creating GitHub repository", { name, org: GITHUB_ORG });
     await octokit.rest.repos.createInOrg({
       org: GITHUB_ORG,
       name,
@@ -84,15 +87,18 @@ export async function publishPlugin(
     logger.info("Repository created successfully", { name });
     wasRepoCreated = true;
 
-    // Step 3: Branch Management
-    // Get the default branch reference
+    logger.info("Starting branch management", { name, branch: branchName });
     const mainRef = await octokit.rest.git.getRef({
       owner: GITHUB_ORG,
       repo: name,
       ref: "heads/main",
     });
+    logger.info("Main branch reference obtained", {
+      name,
+      sha: mainRef.data.object.sha,
+    });
 
-    // Create version-specific branch from main
+    logger.info("Creating version branch", { name, branch: branchName });
     await octokit.rest.git.createRef({
       owner: GITHUB_ORG,
       repo: name,
@@ -100,26 +106,24 @@ export async function publishPlugin(
       sha: mainRef.data.object.sha,
     });
 
-    // Remove the default main branch
+    logger.info("Removing default main branch", { name });
     await octokit.rest.git.deleteRef({
       owner: GITHUB_ORG,
       repo: name,
       ref: "heads/main",
     });
 
-    // Step 4: Prepare and upload plugin files
-    // Convert local files to GitHub tree items
+    logger.info("Preparing file tree", { name });
     const treeItems = await allFilePathsToTreeItems(allFilePaths, tempDir, name);
-    logger.debug("File tree prepared", { name });
+    logger.info("File tree prepared", { name, itemCount: treeItems.length });
 
-    // Get the target branch for committing files
     const targetBranch = await octokit.rest.repos.getBranch({
       owner: GITHUB_ORG,
       repo: name,
       branch: branchName,
     });
 
-    // Create a new Git tree with all plugin files
+    logger.info("Creating Git tree", { name });
     const tree = await octokit.rest.git.createTree({
       owner: GITHUB_ORG,
       repo: name,
@@ -134,7 +138,7 @@ export async function publishPlugin(
     });
     logger.info("File tree created in repository", { name });
 
-    // Step 5: Create commit with plugin files
+    logger.info("Creating commit", { name });
     const commit = await octokit.rest.git.createCommit({
       owner: GITHUB_ORG,
       repo: name,
@@ -143,16 +147,14 @@ export async function publishPlugin(
       parents: [targetBranch.data.commit.sha],
     });
 
-    // Step 6: Finalize repository setup
+    logger.info("Finalizing repository setup", { name });
     await Promise.all([
-      // Update branch to point to new commit
       octokit.rest.git.updateRef({
         owner: GITHUB_ORG,
         repo: name,
         ref: "heads/" + branchName,
         sha: commit.data.sha,
       }),
-      // Set repository topics including author tag
       octokit.rest.repos.replaceAllTopics({
         owner: GITHUB_ORG,
         repo: name,
@@ -160,7 +162,12 @@ export async function publishPlugin(
       }),
     ]);
 
-    // Step 7: Return formatted plugin data
+    logger.info("Plugin publication completed successfully", {
+      name,
+      version: branchName,
+      userId,
+    });
+
     return pluginSchema.parse({
       name,
       description,
@@ -170,9 +177,15 @@ export async function publishPlugin(
       repoUrl: `https://github.com/${GITHUB_ORG}/${name}/tree/${branchName}`,
     });
   } catch (e) {
-    // Cleanup: Delete repository if creation failed
+    logger.error("Plugin publication failed", {
+      name,
+      error: e instanceof Error ? e.message : String(e),
+      userId,
+    });
+
     if (wasRepoCreated) {
-      octokit.rest.repos.delete({
+      logger.warn("Cleaning up failed repository", { name });
+      await octokit.rest.repos.delete({
         owner: GITHUB_ORG,
         repo: name,
       });
@@ -188,44 +201,55 @@ export async function updatePlugin(
 ): Promise<z.infer<typeof pluginSchema>> {
   const { name, description, version, tags, file: zipFile, homepage: url } = params;
   const branchName = version;
+  let newBranchCreated = false;
+
+  logger.info("Starting plugin update process", {
+    name,
+    currentVersion: currentPlugin.versions[0],
+    newVersion: version,
+    userId,
+  });
 
   try {
-    // Step 1: Verify new version doesn't exist
+    logger.info("Checking version existence", { name, version });
     try {
       await octokit.rest.repos.getBranch({
         owner: GITHUB_ORG,
         repo: name,
         branch: branchName,
       });
+      logger.warn("Version already exists", { name, version });
       throw new Error(`Version ${version} already exists`);
     } catch (e: any) {
       if (e.status !== 404) throw e;
     }
 
-    // Step 2: Extract zip contents to temporary directory
+    logger.info("Extracting updated plugin contents", { name });
     const tempDir = await zipToFolder(zipFile);
     const allFilePaths = await readDirRecursive(tempDir);
+    logger.info("Files extracted", { name, fileCount: allFilePaths.length });
 
-    // Step 3: Get the default branch reference
+    logger.info("Getting default branch reference", { name });
     const defaultBranch = await octokit.rest.repos.getBranch({
       owner: GITHUB_ORG,
       repo: name,
       branch: currentPlugin.versions[0],
     });
 
-    // Step 4: Create new version branch
+    logger.info("Creating new version branch", { name, branch: branchName });
     await octokit.rest.git.createRef({
       owner: GITHUB_ORG,
       repo: name,
       ref: `refs/heads/${branchName}`,
       sha: defaultBranch.data.commit.sha,
     });
+    newBranchCreated = true;
 
-    // Step 5: Prepare and upload plugin files
+    logger.info("Preparing updated file tree", { name });
     const treeItems = await allFilePathsToTreeItems(allFilePaths, tempDir, name);
-    logger.debug("File tree prepared", { name });
+    logger.info("File tree prepared", { name, itemCount: treeItems.length });
 
-    // Create a new Git tree with updated files
+    logger.info("Creating new Git tree", { name });
     const tree = await octokit.rest.git.createTree({
       owner: GITHUB_ORG,
       repo: name,
@@ -240,7 +264,7 @@ export async function updatePlugin(
     });
     logger.info("File tree created in repository", { name });
 
-    // Step 6: Create commit with updated files
+    logger.info("Creating commit with updated files", { name });
     const commit = await octokit.rest.git.createCommit({
       owner: GITHUB_ORG,
       repo: name,
@@ -249,16 +273,14 @@ export async function updatePlugin(
       parents: [defaultBranch.data.commit.sha],
     });
 
-    // Step 7: Finalize repository updates
+    logger.info("Finalizing repository updates", { name });
     await Promise.all([
-      // Update branch to point to new commit
       octokit.rest.git.updateRef({
         owner: GITHUB_ORG,
         repo: name,
         ref: `heads/${branchName}`,
         sha: commit.data.sha,
       }),
-      // Update repository metadata
       octokit.rest.repos.update({
         owner: GITHUB_ORG,
         repo: name,
@@ -267,7 +289,6 @@ export async function updatePlugin(
         homepage: url ?? undefined,
         default_branch: branchName,
       }),
-      // Update repository topics
       octokit.rest.repos.replaceAllTopics({
         owner: GITHUB_ORG,
         repo: name,
@@ -275,7 +296,12 @@ export async function updatePlugin(
       }),
     ]);
 
-    // Step 8: Return updated plugin data
+    logger.info("Plugin update completed successfully", {
+      name,
+      version,
+      userId,
+    });
+
     return pluginSchema.parse({
       name,
       description,
@@ -285,14 +311,30 @@ export async function updatePlugin(
       repoUrl: `https://github.com/${GITHUB_ORG}/${name}/tree/${branchName}`,
     });
   } catch (e) {
-    // Clean up new branch if creation failed
+    logger.error("Plugin update failed", {
+      name,
+      version,
+      error: e instanceof Error ? e.message : String(e),
+      userId,
+    });
+
     try {
-      await octokit.rest.git.deleteRef({
-        owner: GITHUB_ORG,
-        repo: name,
-        ref: `heads/${branchName}`,
+      if (newBranchCreated) {
+        logger.warn("Cleaning up failed branch", { name, branch: branchName });
+        await octokit.rest.git.deleteRef({
+          owner: GITHUB_ORG,
+          repo: name,
+          ref: `heads/${branchName}`,
+        });
+      }
+    } catch (cleanupError) {
+      logger.error("Branch cleanup failed", {
+        name,
+        branch: branchName,
+        error:
+          cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
       });
-    } catch {}
+    }
     throw e;
   }
 }
