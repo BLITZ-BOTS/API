@@ -172,7 +172,7 @@ export async function publishPlugin(
       name,
       description,
       versions: sortVersions(version),
-      author: userId,
+      author_id: userId,
       tags,
       repoUrl: `https://github.com/${GITHUB_ORG}/${name}/tree/${branchName}`,
     });
@@ -306,7 +306,7 @@ export async function updatePlugin(
       name,
       description,
       versions: sortVersions(version, currentPlugin.versions),
-      author: userId,
+      author_id: userId,
       tags,
       repoUrl: `https://github.com/${GITHUB_ORG}/${name}/tree/${branchName}`,
     });

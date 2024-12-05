@@ -4,6 +4,8 @@ import { octokit } from "@/lib/octo";
 import { pluginSchema } from "@/schema/plugin";
 import { RequestError } from "octokit";
 import { logger } from "./logger";
+import type { authorSchema } from "@/schema/author";
+import { getUserById } from "./supabase";
 
 export interface BasicRepoInfo {
   name: string;
@@ -27,13 +29,15 @@ export function reformatPlugin(
   {
     versions,
     currentVersion,
+    author,
   }: {
     versions?: string[];
     currentVersion?: string;
+    author?: z.infer<typeof authorSchema>;
   } = {}
 ): z.infer<typeof pluginSchema> {
   const topics = repo.topics ?? [];
-  const author = topicsToAuthor(topics) ?? "unknown";
+  const authorId = topicsToAuthor(topics);
   const tags = topics.filter((t) => !t.startsWith("author-"));
 
   // Sort versions to put default branch first
@@ -43,7 +47,8 @@ export function reformatPlugin(
     name: repo.name,
     description: repo.description,
     versions: sortedVersions,
-    author,
+    author_id: authorId,
+    author: author ?? null,
     tags,
     repoUrl: `https://github.com/${GITHUB_ORG}/${repo.name}/tree/${
       currentVersion || repo.default_branch
@@ -95,50 +100,77 @@ export async function getPlugin(
   {
     version,
     showAllVersions,
+    provideFullAuthor,
   }: {
     version?: string;
     showAllVersions?: boolean;
+    provideFullAuthor?: boolean;
   } = {}
 ): Promise<z.infer<typeof pluginSchema> | null> {
   try {
-    const { data } = await octokit.rest.repos.get({
+    // Parallel fetches for repo and branch data
+    const repoDataPromise = octokit.rest.repos.get({
       owner: GITHUB_ORG,
       repo: name,
     });
 
-    const allVersionNames = showAllVersions
-      ? await (async () => {
-          const { data } = await octokit.rest.repos.listBranches({
-            owner: GITHUB_ORG,
-            repo: name,
-          });
-          return data.map((e) => e.name);
-        })()
-      : undefined;
+    const allVersionNamesPromise = showAllVersions
+      ? octokit.rest.repos
+          .listBranches({ owner: GITHUB_ORG, repo: name })
+          .then(({ data }) => data.map((e) => e.name))
+      : Promise.resolve(undefined);
 
-    if (version) {
-      try {
-        await octokit.rest.repos.getBranch({
-          owner: GITHUB_ORG,
-          repo: name,
-          branch: version,
-        });
+    const versionBranchCheckPromise = version
+      ? octokit.rest.repos
+          .getBranch({ owner: GITHUB_ORG, repo: name, branch: version })
+          .then(() => version)
+          .catch((e) => {
+            if (e instanceof RequestError && e.status === 404) {
+              return null;
+            }
+            throw e;
+          })
+      : Promise.resolve(undefined);
 
-        return reformatPlugin(data as BasicRepoInfo, {
-          currentVersion: version,
-          versions: allVersionNames,
-        });
-      } catch (e) {
-        if (e instanceof RequestError && e.status === 404) {
-          return null;
-        }
-        throw e;
-      }
+    const [repoData, allVersionNames, currentVersion] = await Promise.all([
+      repoDataPromise,
+      allVersionNamesPromise,
+      versionBranchCheckPromise,
+    ]);
+
+    if (currentVersion === null) {
+      return null;
     }
 
-    return reformatPlugin(data as BasicRepoInfo, {
+    const extraParams: Parameters<typeof reformatPlugin>["1"] = {
       versions: allVersionNames,
-    });
+      currentVersion,
+    };
+
+    const author_id = topicsToAuthor(repoData.data.topics ?? []);
+    if (!author_id) {
+      return null;
+    }
+
+    const fullAuthorPromise = provideFullAuthor
+      ? getUserById(author_id).catch((e) => {
+          if (e instanceof RequestError && e.status === 404) {
+            return null;
+          }
+          throw e;
+        })
+      : Promise.resolve(undefined);
+
+    const fullAuthor = await fullAuthorPromise;
+    if (provideFullAuthor && !fullAuthor) {
+      return null;
+    }
+
+    if (fullAuthor) {
+      extraParams["author"] = fullAuthor;
+    }
+
+    return reformatPlugin(repoData.data as BasicRepoInfo, extraParams);
   } catch (e) {
     if (e instanceof RequestError && e.status === 404) {
       return null;

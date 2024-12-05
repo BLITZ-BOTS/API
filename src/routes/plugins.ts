@@ -51,7 +51,7 @@ pluginsRoutes.patch("/:name", requireAuth, async (c) => {
     return jsonResponse.error(c, "Plugin not found", "", 404);
   }
 
-  if (repo.author !== c.get("user").id) {
+  if (repo.author_id !== c.get("user").id) {
     return jsonResponse.error(c, "Unauthorized", "You can't update this.", 401);
   }
 
@@ -69,7 +69,7 @@ pluginsRoutes.delete("/:name", requireAuth, async (c) => {
     return jsonResponse.error(c, "Plugin not found", "", 404);
   }
 
-  if (repo.author !== c.get("user").id) {
+  if (repo.author_id !== c.get("user").id) {
     return jsonResponse.error(c, "Unauthorized", "You can't delete this.", 401);
   }
 
@@ -108,6 +108,7 @@ pluginsRoutes.get("/get/:name/:version", async (c) => {
   const repo = await getPlugin(name, {
     version,
     showAllVersions: true,
+    provideFullAuthor: true,
   });
 
   if (!repo) {
@@ -123,6 +124,7 @@ pluginsRoutes.get("/get/:name", async (c) => {
 
   const repo = await getPlugin(name, {
     showAllVersions: true,
+    provideFullAuthor: true,
   });
 
   if (!repo) {
