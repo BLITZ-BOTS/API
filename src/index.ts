@@ -7,6 +7,7 @@ import { userRoutes } from "./routes/user";
 import { jsonResponse } from "./lib/response";
 import { supabase } from "./lib/supabase";
 import { RequestValidationError } from "./lib/validation";
+import { usersRoutes } from "./routes/users";
 
 const app = new Hono();
 const { PORT } = Bun.env;
@@ -24,6 +25,7 @@ app.use("*", loggerMiddleware);
 
 app.route("/plugins", pluginsRoutes);
 app.route("/user", userRoutes);
+app.route("/users", usersRoutes);
 app.route("/projects", projectRoutes);
 
 app.get("/login", async (c) => {

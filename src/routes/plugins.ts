@@ -133,11 +133,3 @@ pluginsRoutes.get("/get/:name", async (c) => {
 
   return jsonResponse.success(c, repo);
 });
-
-pluginsRoutes.get("/user/:id", async (c) => {
-  const id = parseParamsSchema(c, z.string(), "id");
-
-  const repos = await getPlugins(1, 100, id);
-
-  return jsonResponse.success(c, repos);
-});
