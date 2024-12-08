@@ -8,6 +8,7 @@ interface Env {
   GITHUB_APP_PRIVATE_KEY: string;
   GITHUB_APP_ID: string;
   GITHUB_ORG: string;
+  DISCORD_WEBHOOK: string;
 }
 
 const env = Bun.env as unknown as Env;
@@ -20,6 +21,7 @@ const {
   GITHUB_APP_PRIVATE_KEY,
   GITHUB_APP_ID,
   GITHUB_ORG,
+  DISCORD_WEBHOOK,
 } = env;
 
 /* support both named and default exports */
@@ -34,4 +36,5 @@ export {
   GITHUB_APP_PRIVATE_KEY,
   GITHUB_APP_ID,
   GITHUB_ORG,
+  DISCORD_WEBHOOK,
 };

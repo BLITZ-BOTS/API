@@ -9,6 +9,7 @@ import { basicPaginationSchema } from "@/schema/pagination";
 import type { HonoParams } from "@/types/vars";
 import { requireAuth } from "@/middlewares/auth";
 import { parseBodySchema, parseParamsSchema, parseQuerySchema } from "@/lib/validation";
+import { idToWebhook } from "@/lib/webhook";
 
 export const pluginsRoutes = new Hono<HonoParams>();
 
@@ -34,6 +35,7 @@ pluginsRoutes.post("/", requireAuth, async (c) => {
     }
 
     const result = await publishPlugin(data, user.id);
+    idToWebhook(data.name, "create");
 
     logger.info(`✅ Plugin uploaded successfully: ${data.name}`);
     return jsonResponse.success(c, result);
@@ -56,6 +58,7 @@ pluginsRoutes.patch("/:name", requireAuth, async (c) => {
   }
 
   const newRepo = await updatePlugin(data, c.get("user").id, repo);
+  idToWebhook(repo.name, "update");
 
   return jsonResponse.success(c, newRepo);
 });
