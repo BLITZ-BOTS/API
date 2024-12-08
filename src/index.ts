@@ -21,7 +21,7 @@ app.use(
       "https://www.blitz-bots.com",
     ],
     allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   })
 );
 
