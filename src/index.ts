@@ -15,7 +15,12 @@ const { PORT } = Bun.env;
 /* we need to finish setting up cors */
 app.use(
   cors({
-    origin: ["http://localhost", "https://www.blitz-bots.com"],
+    origin: (origin, c) => {
+      if (/^http:\/\/localhost:\d+$/.test(origin)) {
+        return origin;
+      }
+      return "https://www.blitz-bots.com";
+    },
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   })
