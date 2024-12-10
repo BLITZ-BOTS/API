@@ -1,4 +1,4 @@
-# blitz-api
+# <img src="https://assets.blitz-bots.com/banner.svg"/>
 
 ## uses
 
