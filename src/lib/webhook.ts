@@ -68,22 +68,6 @@ export async function sendPluginWebhook(
           } plugin.`,
           icon_url: "https://blitz-bots.com/assets/logo.png",
         },
-        components: [
-          {
-            type: 1,
-            components: [
-              {
-                type: 2,
-                style: 5,
-                label: "View plugin",
-                url: `https://blitz-bots.com/plugins/${plugin.name}`,
-                disabled: false,
-                custom_id: null,
-                emoji: null,
-              },
-            ],
-          },
-        ],
       },
     ],
   };
