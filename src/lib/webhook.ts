@@ -11,11 +11,16 @@ interface WHBody {
     description: string;
     color: number;
     url?: string;
+    footer?: {
+      text: string;
+      icon_url: string;
+    };
+    author?: {
+      name: string;
+      icon_url: string;
+    };
+    components?: any;
   }[];
-  author?: {
-    name: string;
-    icon_url: string;
-  };
 }
 
 async function sendWebhook(body: WHBody) {
@@ -28,7 +33,7 @@ async function sendWebhook(body: WHBody) {
   });
 
   if (!res.ok) {
-    logger.error("Failed to send webhook", res);
+    logger.error("Failed to send webhook", await res.text());
     return false;
   }
 
@@ -44,17 +49,43 @@ export async function sendPluginWebhook(
     embeds: [
       {
         title: plugin.name,
-        description: plugin.description ?? "",
-        color: status === "update" ? 0x00ff00 : 0xffa500,
+        description: `${
+          plugin.tags.length > 0
+            ? plugin.tags.map((e) => `\`${e}\``).join(" ") + "\n"
+            : ""
+        }${plugin.description ?? ""}`,
+        color: status === "create" ? 0x00ff00 : 0xffa500,
         url: `https://blitz-bots.com/plugins/${plugin.name}`,
+        author: plugin.author
+          ? {
+              icon_url: plugin.author.avatar_url ?? "",
+              name: plugin.author.username,
+            }
+          : undefined,
+        footer: {
+          text: `${plugin.versions[0]} | ${
+            status === "create" ? "Created" : "Updated"
+          } plugin.`,
+          icon_url: "https://blitz-bots.com/assets/logo.png",
+        },
+        components: [
+          {
+            type: 1,
+            components: [
+              {
+                type: 2,
+                style: 5,
+                label: "View plugin",
+                url: `https://blitz-bots.com/plugins/${plugin.name}`,
+                disabled: false,
+                custom_id: null,
+                emoji: null,
+              },
+            ],
+          },
+        ],
       },
     ],
-    author: plugin.author
-      ? {
-          icon_url: plugin.author.avatar_url ?? "",
-          name: plugin.author.username,
-        }
-      : undefined,
   };
   await sendWebhook(body);
 }
