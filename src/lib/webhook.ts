@@ -66,7 +66,7 @@ export async function sendPluginWebhook(
           text: `${plugin.versions[0]} | ${
             status === "create" ? "Created" : "Updated"
           } plugin.`,
-          icon_url: "https://blitz-bots.com/assets/logo.png",
+          icon_url: "https://assets.blitz-bots.com/blitz.svg",
         },
       },
     ],
