@@ -16,7 +16,9 @@ export async function parseBodySchema<T extends z.ZodTypeAny>(
   schema: T
 ): Promise<z.infer<T>> {
   try {
-    return schema.parse(await c.req.parseBody()) as z.infer<T>;
+const b = await c.req.parseBody();
+if (b.tags) b.tags = b.tags.split(",");
+    return schema.parse(b) as z.infer<T>;
   } catch (e) {
     if (e instanceof ZodError) {
       throw new RequestValidationError(e);
