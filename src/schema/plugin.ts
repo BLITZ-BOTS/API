@@ -23,7 +23,10 @@ export const pluginSchema = z.object({
   versions: z.array(versionSchema).min(1),
   author_id: z.string().min(1),
   author: authorSchema.nullish().default(null),
-  tags: z.array(z.string()).default([]),
+  tags: z
+    .array(z.string().transform((e) => e.trim()))
+    .default([])
+    .or(z.string().transform((e) => e.split(",").map((e) => e.trim()))),
   homepage: z.string().url().nullish().default(null),
   repoUrl: z.string().url(),
 });
